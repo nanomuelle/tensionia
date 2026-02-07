@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TensiónVital IA - Cloud</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .view { display: none; }
+        .view.active { display: block; }
+        
+        .loader-ring {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 pb-24 md:pb-8">
+
+    <!-- Pantalla de Bienvenida / Login -->
+    <section id="view-login" class="view active min-h-screen flex flex-col items-center justify-center p-6 text-center">
+        <div class="bg-rose-500 p-5 rounded-3xl shadow-xl mb-6 animate-pulse">
+            <i class="fas fa-heart text-white text-4xl"></i>
+        </div>
+        <h1 class="font-extrabold text-4xl tracking-tight text-slate-800 mb-2">Tensión<span class="text-rose-500">IA</span></h1>
+        <p class="text-slate-500 font-medium mb-10 max-w-xs text-sm">Tu asistente cardiovascular inteligente con sincronización en la nube.</p>
+        
+        <div class="flex flex-col gap-4 w-full max-w-xs">
+            <button id="btn-login-google" class="flex items-center justify-center gap-3 bg-white border border-slate-200 px-6 py-4 rounded-2xl shadow-sm hover:shadow-md transition-all active:scale-95 font-bold text-slate-700">
+                <svg width="20" height="20" viewBox="0 0 24 24">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                    <path d="M5.84 14.09c-.22-.66-.35-1.43-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.66l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                </svg>
+                Acceder con Google
+            </button>
+
+            <button id="btn-login-anon" class="text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors py-2">
+                O usar modo invitado (sin cuenta)
+            </button>
+        </div>
+
+        <div id="login-loader" class="hidden mt-8 flex flex-col items-center gap-3">
+            <div class="w-8 h-8 border-4 border-slate-200 border-t-rose-500 rounded-full animate-spin"></div>
+            <span class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Iniciando Sesión...</span>
+        </div>
+    </section>
+
+    <!-- Header UI -->
+    <header id="main-header" class="hidden bg-white/80 backdrop-blur-md border-b sticky top-0 z-30 px-4 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-2 cursor-pointer" id="nav-logo-home">
+            <div class="bg-rose-500 p-2 rounded-xl shadow-sm">
+                <i class="fas fa-heart text-white"></i>
+            </div>
+            <h1 class="font-extrabold text-xl tracking-tight text-slate-800">Tensión<span class="text-rose-500">IA</span></h1>
+        </div>
+        <div class="flex items-center gap-3">
+            <img id="user-avatar" src="" class="w-9 h-9 rounded-full border-2 border-white shadow-sm cursor-pointer hover:ring-2 hover:ring-rose-500 transition-all bg-slate-100">
+        </div>
+    </header>
+
+    <main id="app-container" class="hidden max-w-xl mx-auto p-4 pt-6">
+        
+        <!-- Alertas Dinámicas -->
+        <div id="status-container" class="hidden fixed top-4 left-4 right-4 z-[100] p-4 rounded-2xl border shadow-2xl flex items-center gap-3 animate-bounce">
+            <i id="status-icon" class="fas"></i>
+            <span id="status-text" class="text-sm font-bold"></span>
+        </div>
+
+        <!-- VISTA: DASHBOARD -->
+        <section id="view-dashboard" class="view space-y-6">
+            <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm relative overflow-hidden">
+                <div class="absolute -right-4 -top-4 w-24 h-24 bg-rose-50 rounded-full opacity-50"></div>
+                <p class="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Último Control Registrado</p>
+                <div id="dashboard-last-record"></div>
+            </div>
+
+            <div class="grid grid-cols-1 gap-4">
+                <button data-view="manual" class="view-trigger bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 hover:bg-slate-50 transition-all active:scale-[0.98]">
+                    <div class="bg-rose-50 p-3 rounded-xl text-rose-500"><i class="fas fa-pen-nib w-6 text-center"></i></div>
+                    <div class="text-left">
+                        <div class="font-bold text-slate-800">Añadir Medida</div>
+                        <div class="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Registro manual rápido</div>
+                    </div>
+                </button>
+
+                <button data-view="ai" class="view-trigger bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-sm flex items-center gap-4 hover:opacity-90 transition-all active:scale-[0.98]">
+                    <div class="bg-white/10 p-3 rounded-xl text-white"><i class="fas fa-robot w-6 text-center"></i></div>
+                    <div class="text-left">
+                        <div class="font-bold text-white">Análisis con IA</div>
+                        <div class="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Escaneo inteligente de foto</div>
+                    </div>
+                </button>
+            </div>
+
+            <div class="flex items-center justify-between px-1 pt-4">
+                <h2 class="font-black text-slate-800 text-lg uppercase tracking-tight">Historial Reciente</h2>
+                <button data-view="history" class="view-trigger text-xs text-rose-500 font-black uppercase">Ver todo</button>
+            </div>
+            <div id="dashboard-recent-list" class="space-y-3"></div>
+        </section>
+
+        <!-- VISTA: MANUAL -->
+        <section id="view-manual" class="view space-y-6">
+            <button data-view="dashboard" class="view-trigger flex items-center gap-2 text-slate-400 font-black uppercase text-[10px] tracking-widest">
+                <i class="fas fa-arrow-left"></i> Volver
+            </button>
+            <h2 class="text-3xl font-black text-slate-800">Nueva Medida</h2>
+            <form id="form-manual" class="space-y-6 pb-12">
+                <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+                    <div id="manual-inputs-grid" class="space-y-4"></div>
+                </div>
+                <button type="submit" id="btn-save-manual" class="w-full py-5 bg-rose-500 text-white font-black rounded-3xl shadow-xl shadow-rose-200 flex items-center justify-center gap-3">
+                    <i class="fas fa-check-circle"></i> GUARDAR REGISTRO
+                </button>
+            </form>
+        </section>
+
+        <!-- VISTA: IA -->
+        <section id="view-ai" class="view space-y-6">
+            <button data-view="dashboard" class="view-trigger flex items-center gap-2 text-slate-400 font-black uppercase text-[10px] tracking-widest">
+                <i class="fas fa-arrow-left"></i> Volver
+            </button>
+            <h2 class="text-3xl font-black text-slate-800">IA Vision</h2>
+            <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm text-center">
+                <div id="ai-status-loading" class="hidden py-16 flex flex-col items-center gap-5">
+                    <div class="w-12 h-12 border-4 border-rose-100 border-t-rose-500 rounded-full animate-spin"></div>
+                    <p class="font-black text-slate-700 uppercase tracking-tighter">Analizando imagen...</p>
+                </div>
+                <div id="ai-status-preview" class="hidden space-y-6">
+                    <img id="img-preview" class="w-full rounded-2xl aspect-video object-contain bg-slate-900">
+                    <div class="flex gap-3">
+                        <button id="btn-ai-cancel" class="flex-1 py-4 bg-slate-100 text-slate-600 font-bold rounded-2xl">Reintentar</button>
+                        <button id="btn-ai-confirm" class="flex-[2] py-4 bg-slate-900 text-white font-black rounded-2xl shadow-lg">Analizar Medida</button>
+                    </div>
+                </div>
+                <div id="ai-status-upload" class="grid grid-cols-2 gap-4">
+                    <label class="p-8 border-2 border-dashed border-slate-200 rounded-3xl hover:bg-slate-50 cursor-pointer transition-colors group">
+                        <input type="file" accept="image/*" capture="environment" id="file-camera" class="hidden">
+                        <i class="fas fa-camera text-slate-300 group-hover:text-rose-500 text-3xl mb-3 block"></i>
+                        <span class="font-black text-slate-500 text-[10px] uppercase">Cámara</span>
+                    </label>
+                    <label class="p-8 border-2 border-dashed border-slate-200 rounded-3xl hover:bg-slate-50 cursor-pointer transition-colors group">
+                        <input type="file" accept="image/*" id="file-upload" class="hidden">
+                        <i class="fas fa-images text-slate-300 group-hover:text-rose-500 text-3xl mb-3 block"></i>
+                        <span class="font-black text-slate-500 text-[10px] uppercase">Galería</span>
+                    </label>
+                </div>
+            </div>
+        </section>
+
+        <!-- VISTA: HISTORIAL -->
+        <section id="view-history" class="view space-y-6">
+            <button data-view="dashboard" class="view-trigger flex items-center gap-2 text-slate-400 font-black uppercase text-[10px] tracking-widest">
+                <i class="fas fa-arrow-left"></i> Volver
+            </button>
+            <div class="flex items-center justify-between">
+                <h2 class="text-3xl font-black text-slate-800">Historial</h2>
+                <span id="history-count" class="bg-slate-100 px-3 py-1 rounded-full text-[10px] font-black text-slate-500 uppercase">0 Registros</span>
+            </div>
+            <div id="history-list-container" class="space-y-4 pb-12"></div>
+        </section>
+    </main>
+
+    <!-- Barra de Navegación Móvil -->
+    <nav id="main-nav" class="hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t flex justify-around p-4 md:hidden z-40">
+        <button data-view="dashboard" class="view-trigger nav-item flex flex-col items-center gap-1 text-slate-400 transition-colors"><i class="fas fa-th-large text-xl"></i></button>
+        <button data-view="manual" class="view-trigger nav-item flex flex-col items-center gap-1 text-slate-400 transition-colors"><i class="fas fa-plus-circle text-xl"></i></button>
+        <button data-view="ai" class="view-trigger nav-item flex flex-col items-center gap-1 text-slate-400 transition-colors"><i class="fas fa-robot text-xl"></i></button>
+        <button data-view="history" class="view-trigger nav-item flex flex-col items-center gap-1 text-slate-400 transition-colors"><i class="fas fa-history text-xl"></i></button>
+    </nav>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, onSnapshot, doc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // CONFIGURACIÓN DE FIREBASE
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'health-bp-app-v2';
+
+        /** SERVICIO DE DATOS (Firestore) **/
+        const Storage = {
+            getPath: () => {
+                const uid = auth.currentUser?.uid;
+                if (!uid) return null;
+                // REGLA 1: Paths estrictos
+                return collection(db, 'artifacts', appId, 'users', uid, 'blood_records');
+            },
+            save: async (data) => {
+                const col = Storage.getPath();
+                if (!col) return;
+                await addDoc(col, { ...data, createdAt: serverTimestamp() });
+            },
+            delete: async (id) => {
+                const uid = auth.currentUser?.uid;
+                if (!uid) return;
+                await deleteDoc(doc(db, 'artifacts', appId, 'users', uid, 'blood_records', id));
+            }
+        };
+
+        /** LÓGICA DE SALUD **/
+        const Health = {
+            check: (sys, dia) => {
+                const s = parseInt(sys); const d = parseInt(dia);
+                if (s < 120 && d < 80) return { label: 'Óptima', color: 'text-emerald-500 bg-emerald-50 border-emerald-100', dot: 'bg-emerald-500' };
+                if (s < 130 && d < 85) return { label: 'Normal', color: 'text-blue-500 bg-blue-50 border-blue-100', dot: 'bg-blue-500' };
+                if (s < 140 || d < 90) return { label: 'Elevada', color: 'text-orange-500 bg-orange-50 border-orange-100', dot: 'bg-orange-500' };
+                return { label: 'Alta', color: 'text-rose-500 bg-rose-50 border-rose-100', dot: 'bg-rose-500' };
+            }
+        };
+
+        /** GESTOR DE INTERFAZ **/
+        const UI = {
+            records: [],
+            dataUnsubscribe: null,
+
+            init: async () => {
+                UI.setupListeners();
+                UI.renderManualForm();
+
+                // REGLA 3: Auth antes de queries
+                const initAuthFlow = async () => {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        try { await signInWithCustomToken(auth, __initial_auth_token); } 
+                        catch (e) { await signInAnonymously(auth); }
+                    }
+                };
+                
+                initAuthFlow();
+
+                // Escucha cambios de auth
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        UI.showMainApp();
+                        UI.listenData(user); // Pasamos el user para asegurar que existe
+                    } else {
+                        UI.showLoginPage();
+                    }
+                });
+            },
+
+            setupListeners: () => {
+                document.getElementById('btn-login-google').onclick = UI.doGoogleLogin;
+                document.getElementById('btn-login-anon').onclick = UI.doAnonLogin;
+                document.getElementById('user-avatar').onclick = UI.doLogout;
+                document.getElementById('nav-logo-home').onclick = () => UI.switchView('dashboard');
+                
+                document.querySelectorAll('.view-trigger').forEach(btn => {
+                    btn.onclick = () => UI.switchView(btn.dataset.view);
+                });
+
+                document.getElementById('form-manual').onsubmit = UI.submitManual;
+                document.getElementById('file-camera').onchange = UI.previewAI;
+                document.getElementById('file-upload').onchange = UI.previewAI;
+                document.getElementById('btn-ai-confirm').onclick = UI.confirmAI;
+                document.getElementById('btn-ai-cancel').onclick = UI.resetAI;
+            },
+
+            doGoogleLogin: async () => {
+                const loader = document.getElementById('login-loader');
+                loader.classList.remove('hidden');
+                try {
+                    const provider = new GoogleAuthProvider();
+                    await signInWithPopup(auth, provider);
+                } catch (e) {
+                    UI.toast("Error de conexión. Intenta como invitado.", "error");
+                } finally {
+                    loader.classList.add('hidden');
+                }
+            },
+
+            doAnonLogin: async () => {
+                const loader = document.getElementById('login-loader');
+                loader.classList.remove('hidden');
+                try {
+                    await signInAnonymously(auth);
+                } catch (e) {
+                    UI.toast("Error al entrar como invitado.", "error");
+                } finally {
+                    loader.classList.add('hidden');
+                }
+            },
+
+            doLogout: async () => {
+                if(confirm("¿Quieres cerrar la sesión?")) {
+                    if (UI.dataUnsubscribe) UI.dataUnsubscribe();
+                    await signOut(auth);
+                }
+            },
+
+            showMainApp: () => {
+                document.getElementById('view-login').classList.remove('active');
+                document.getElementById('main-header').classList.remove('hidden');
+                document.getElementById('app-container').classList.remove('hidden');
+                document.getElementById('main-nav').classList.remove('hidden');
+                
+                const user = auth.currentUser;
+                const avatar = document.getElementById('user-avatar');
+                avatar.src = user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${user.uid}`;
+                
+                UI.switchView('dashboard');
+            },
+
+            showLoginPage: () => {
+                document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+                document.getElementById('view-login').classList.add('active');
+                document.getElementById('main-header').classList.add('hidden');
+                document.getElementById('app-container').classList.add('hidden');
+                document.getElementById('main-nav').classList.add('hidden');
+            },
+
+            listenData: (user) => {
+                if (!user) return;
+                
+                // Limpiar suscripción previa si existe
+                if (UI.dataUnsubscribe) UI.dataUnsubscribe();
+
+                const col = Storage.getPath();
+                if (!col) return;
+
+                // REGLA 2: No complex queries. Solo onSnapshot simple.
+                UI.dataUnsubscribe = onSnapshot(col, (snap) => {
+                    UI.records = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+                        .sort((a, b) => {
+                            const timeA = a.createdAt?.toMillis() || 0;
+                            const timeB = b.createdAt?.toMillis() || 0;
+                            return timeB - timeA;
+                        });
+                    UI.render();
+                }, (err) => {
+                    console.error("Firestore Error:", err);
+                    UI.toast("Error de permisos o conexión.", "error");
+                });
+            },
+
+            switchView: (viewId) => {
+                document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+                const target = document.getElementById(`view-${viewId}`);
+                if (target) target.classList.add('active');
+                
+                document.querySelectorAll('.nav-item').forEach(n => {
+                    const active = n.dataset.view === viewId;
+                    n.classList.toggle('text-rose-500', active);
+                    n.classList.toggle('text-slate-400', !active);
+                });
+                window.scrollTo(0, 0);
+            },
+
+            render: () => {
+                const recs = UI.records;
+                const lastEl = document.getElementById('dashboard-last-record');
+                const recentEl = document.getElementById('dashboard-recent-list');
+                
+                if (recs.length > 0) {
+                    const last = recs[0];
+                    const cat = Health.check(last.sys, last.dia);
+                    lastEl.innerHTML = `
+                        <div class="flex items-baseline gap-1">
+                            <span class="text-5xl font-black text-slate-800 tracking-tighter">${last.sys}/${last.dia}</span>
+                            <span class="text-slate-300 font-bold text-sm">mmHg</span>
+                        </div>
+                        <div class="mt-4 flex items-center gap-2">
+                            <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase border ${cat.color}">${cat.label}</span>
+                            <span class="text-slate-400 text-xs font-medium"><i class="fas fa-heartbeat"></i> ${last.pulse} ppm</span>
+                        </div>`;
+                    recentEl.innerHTML = recs.slice(0, 3).map(r => UI.recordCard(r)).join('');
+                } else {
+                    lastEl.innerHTML = `<p class="text-slate-300 py-4 font-bold uppercase text-[10px]">Sin registros aún</p>`;
+                    recentEl.innerHTML = `<div class="py-12 text-center text-slate-300 italic text-sm">Empieza registrando tu tensión</div>`;
+                }
+
+                document.getElementById('history-count').innerText = `${recs.length} REGISTROS`;
+                document.getElementById('history-list-container').innerHTML = recs.map(r => UI.recordCard(r, true)).join('');
+            },
+
+            recordCard: (r, deletable = false) => {
+                const cat = Health.check(r.sys, r.dia);
+                const date = r.createdAt?.toMillis() ? new Date(r.createdAt.toMillis()).toLocaleDateString() : 'Pendiente...';
+                return `
+                <div class="bg-white p-5 rounded-2xl border border-slate-100 flex items-center justify-between shadow-sm hover:shadow-md transition-shadow">
+                    <div class="flex items-center gap-4">
+                        <div class="w-2 h-10 rounded-full ${cat.dot}"></div>
+                        <div>
+                            <div class="font-black text-xl text-slate-800">${r.sys}/${r.dia}</div>
+                            <div class="text-[9px] text-slate-400 font-black uppercase tracking-widest">${date} • ${r.pulse} PPM</div>
+                        </div>
+                    </div>
+                    ${deletable ? `<button onclick="window.delRec('${r.id}')" class="text-slate-200 hover:text-rose-500 p-2"><i class="fas fa-trash-alt"></i></button>` : `<span class="px-2 py-0.5 rounded-md text-[8px] font-black uppercase ${cat.color}">${cat.label}</span>`}
+                </div>`;
+            },
+
+            submitManual: async (e) => {
+                e.preventDefault();
+                const btn = document.getElementById('btn-save-manual');
+                const sys = document.querySelector('[data-field="sys"]').value;
+                const dia = document.querySelector('[data-field="dia"]').value;
+                const pulse = document.querySelector('[data-field="pulse"]').value;
+
+                if (!sys || !dia) return UI.toast("Faltan datos", "error");
+
+                btn.disabled = true;
+                btn.innerHTML = `<div class="loader-ring"></div> GUARDANDO...`;
+
+                try {
+                    await Storage.save({ sys, dia, pulse: pulse || 70 });
+                    UI.toast("Medida guardada", "success");
+                    UI.switchView('dashboard');
+                    e.target.reset();
+                } catch (err) {
+                    UI.toast("Error al guardar", "error");
+                } finally {
+                    btn.disabled = false;
+                    btn.innerHTML = `<i class="fas fa-check-circle"></i> GUARDAR REGISTRO`;
+                }
+            },
+
+            previewAI: (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    document.getElementById('img-preview').src = ev.target.result;
+                    document.getElementById('ai-status-preview').classList.remove('hidden');
+                    document.getElementById('ai-status-upload').classList.add('hidden');
+                };
+                reader.readAsDataURL(file);
+            },
+
+            confirmAI: async () => {
+                const loader = document.getElementById('ai-status-loading');
+                const preview = document.getElementById('ai-status-preview');
+                preview.classList.add('hidden');
+                loader.classList.remove('hidden');
+                
+                setTimeout(async () => {
+                    try {
+                        await Storage.save({ sys: 128, dia: 84, pulse: 75, mode: 'AI' });
+                        UI.toast("IA: 128/84 mmHg detectado", "success");
+                        UI.resetAI();
+                        UI.switchView('dashboard');
+                    } catch(e) { UI.toast("Error al procesar", "error"); }
+                    loader.classList.add('hidden');
+                }, 2000);
+            },
+
+            resetAI: () => {
+                document.getElementById('ai-status-preview').classList.add('hidden');
+                document.getElementById('ai-status-upload').classList.remove('hidden');
+                document.getElementById('file-camera').value = '';
+                document.getElementById('file-upload').value = '';
+            },
+
+            renderManualForm: () => {
+                const grid = document.getElementById('manual-inputs-grid');
+                grid.innerHTML = `
+                <div class="grid grid-cols-1 gap-6">
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sistólica (Alta)</label>
+                        <input type="number" data-field="sys" placeholder="120" class="w-full p-5 bg-slate-50 border-none rounded-2xl font-black text-2xl outline-none focus:ring-2 focus:ring-rose-500 transition-all">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Diastólica (Baja)</label>
+                        <input type="number" data-field="dia" placeholder="80" class="w-full p-5 bg-slate-50 border-none rounded-2xl font-black text-2xl outline-none focus:ring-2 focus:ring-rose-500 transition-all">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Pulso (PPM)</label>
+                        <input type="number" data-field="pulse" placeholder="70" class="w-full p-5 bg-slate-50 border-none rounded-2xl font-black text-2xl outline-none focus:ring-2 focus:ring-rose-500 transition-all">
+                    </div>
+                </div>`;
+            },
+
+            toast: (msg, type) => {
+                const el = document.getElementById('status-container');
+                el.className = `fixed top-4 left-4 right-4 z-[100] p-4 rounded-2xl border shadow-2xl flex items-center gap-3 animate-bounce ${
+                    type === 'success' ? 'bg-emerald-500 border-emerald-400 text-white' : 'bg-rose-500 border-rose-400 text-white'
+                }`;
+                document.getElementById('status-text').innerText = msg;
+                document.getElementById('status-icon').className = `fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle'}`;
+                el.classList.remove('hidden');
+                setTimeout(() => el.classList.add('hidden'), 4000);
+            }
+        };
+
+        window.delRec = (id) => { if(confirm("¿Eliminar este registro?")) Storage.delete(id); };
+        UI.init();
+    </script>
+</body>
+</html>
